@@ -1,24 +1,22 @@
-# Use the official Playwright image
-FROM mcr.microsoft.com/playwright/python:v1.41.0-jammy
+FROM python:3.10-slim
 
-# Set working directory
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
-# Copy dependency file and install Python packages
+# Copy files
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Chromium
-RUN playwright install chromium
+# Install Playwright and Browsers
+RUN pip install playwright
+RUN playwright install --with-deps chromium
 
-# Copy all project files
 COPY . .
 
-# Grant permissions (Hugging Face needs this)
-RUN chmod -R 777 /app
-
-# Expose the port Hugging Face expects
-EXPOSE 7860
-
-# Run the application (Simple command)
-CMD ["python", "app.py"]
+# Render dynamically assigns a port, so we use the ENV variable
+CMD gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120
